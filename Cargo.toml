@@ -1,0 +1,21 @@
+[package]
+name = "jsengine"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "jsengine"
+path = "src/lib.rs"
+
+[[bin]]
+name = "jsengine"
+path = "src/main.rs"
+
+[[bin]]
+name = "test262-runner"
+path = "src/bin/test262-runner.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+walkdir = "2.5"
