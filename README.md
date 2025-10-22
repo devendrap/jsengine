@@ -10,9 +10,12 @@ A cross-platform JavaScript engine implementation written in Rust, serving as a 
 - Variables: `var`, `let`, `const`
 - Primitive types: numbers, strings, booleans, null, undefined
 - Objects and arrays (literal syntax)
+- Property assignment: `obj.prop = value`, `obj[key] = value`
 - Functions (declarations and expressions)
-- Control flow: `if/else`, `while`, `for`
+- Control flow: `if/else`, `while`, `for`, `for...in`
 - `break` and `continue` statements
+- Exception handling: `throw`, `try/catch/finally`
+- Object-oriented: `this` keyword, `new` operator
 - Comments (single-line `//` and multi-line `/* */`)
 
 **Modern ES6+ Features:**
@@ -26,8 +29,12 @@ A cross-platform JavaScript engine implementation written in Rust, serving as a 
 - Comparison: `<`, `>`, `<=`, `>=`, `==`, `===`, `!=`, `!==`
 - Logical: `&&`, `||`, `!`
 - Bitwise: `&`, `|`, `^`, `~`, `<<`, `>>`, `>>>`
+- Assignment: `=`, `+=`, `-=`, `*=`, `/=`, `%=`
+- Bitwise Assignment: `&=`, `|=`, `^=`, `<<=`, `>>=`, `>>>=`
+- Logical Assignment: `&&=`, `||=` (with short-circuit evaluation)
+- Increment/Decrement: `++`, `--` (prefix and postfix)
+- Type Checking: `typeof`, `instanceof`, `in`
 - Ternary: `condition ? true_val : false_val`
-- `typeof` operator
 
 **Built-in Functions:**
 - `console.log()` - Print to stdout
@@ -98,33 +105,46 @@ The `examples/` directory contains sample programs:
 - **loops.js** - While, for, break, continue, Fibonacci sequence
 - **data-structures.js** - Arrays, objects, nested structures, property access
 - **operators.js** - All supported operators and type checking
+- **new-features.js** - Property assignment, throw/try/catch, this, new operator
+- **operators-new.js** - Compound assignments, increment/decrement operators
+- **quick-wins.js** - instanceof, in, bitwise/logical assignments, for...in loop
+- **comprehensive-demo.js** - Complete feature showcase
 
 ### Quick Example
 
 ```javascript
-// Factorial with recursion
-function factorial(n) {
-    if (n <= 1) {
-        return 1;
-    }
-    return n * factorial(n - 1);
-}
-
-console.log("5! =", factorial(5)); // Output: 5! = 120
-
-// Closures
-function makeCounter() {
-    let count = 0;
-    return function() {
-        count = count + 1;
-        return count;
+// Object-oriented programming with this and new
+function Person(name, age) {
+    this.name = name;
+    this.age = age;
+    this.greet = function() {
+        console.log("Hi, I'm " + this.name);
     };
 }
 
-let counter = makeCounter();
-console.log(counter()); // 1
-console.log(counter()); // 2
-console.log(counter()); // 3
+let person = new Person("Alice", 30);
+person.greet(); // Hi, I'm Alice
+console.log(person instanceof Person); // true
+
+// Modern operators
+let score = 100;
+score += 50;  // Compound assignment
+score++;      // Increment
+
+// Exception handling
+try {
+    if (score > 100) {
+        throw "Score too high!";
+    }
+} catch (error) {
+    console.log("Error:", error);
+}
+
+// Iterate over object properties
+let user = { name: "Bob", role: "admin", active: true };
+for (key in user) {
+    console.log(key + ":", user[key]);
+}
 ```
 
 ## Technical Details
@@ -162,14 +182,15 @@ As a tree-walking interpreter, it's significantly slower than JIT-compiled engin
 
 Current limitations (by design for POC):
 - No async/await or Promises
-- No standard library beyond basic built-ins
-- No prototype chain or object inheritance
+- No standard library beyond basic built-ins (no Array/String/Object methods)
+- Limited prototype chain support (basic constructor tracking only)
 - No regular expressions
 - No destructuring assignment
 - No spread operator
 - No modules/imports
 - No eval() or dynamic code generation
 - No WebAssembly support (planned for future)
+- Compound/logical assignment on member expressions not yet supported (`obj.x += 5`)
 
 ## Future Enhancements
 
@@ -252,10 +273,11 @@ See [TEST262_INTEGRATION.md](TEST262_INTEGRATION.md) for detailed information ab
 
 This is a learning project, but suggestions and improvements are welcome! Focus areas:
 - Bug fixes for edge cases
-- Additional JavaScript features (prioritize: `this`, `new`, `throw`, property assignment)
+- Additional JavaScript features (prioritize: prototype chain, Array/String methods)
 - Performance improvements
-- Better error messages
+- Better error messages with line numbers
 - Test262 conformance improvements
+- Unit tests for individual modules
 
 ## Acknowledgments
 

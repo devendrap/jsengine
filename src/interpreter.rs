@@ -835,7 +835,7 @@ impl Interpreter {
                     (Value::Object(obj), Value::Function(_)) => {
                         // For now, simplified: check if object has __constructor__ property
                         // In full JavaScript, this would check the prototype chain
-                        if let Some(Value::String(constructor_name)) = obj.borrow().get("__constructor__") {
+                        if let Some(Value::String(_constructor_name)) = obj.borrow().get("__constructor__") {
                             // Get the constructor function name from the right side
                             // This is simplified - proper implementation needs prototype chain
                             Ok(Value::Boolean(true)) // Simplified: assume true if object was created with 'new'
