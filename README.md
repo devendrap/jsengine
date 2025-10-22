@@ -1,6 +1,10 @@
 # JSEngine - JavaScript Engine in Rust
 
-A cross-platform JavaScript engine implementation written in Rust, serving as a proof-of-concept replacement for V8. This engine features a complete lexer, parser, and tree-walking interpreter with support for core JavaScript ES6+ features.
+[![CI](https://github.com/YOUR_USERNAME/jsengine/workflows/CI/badge.svg)](https://github.com/YOUR_USERNAME/jsengine/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Rust](https://img.shields.io/badge/rust-1.90%2B-orange.svg)](https://www.rust-lang.org/)
+
+A cross-platform JavaScript engine implementation written in Rust, serving as a proof-of-concept replacement for V8. This engine features a complete lexer, parser, and tree-walking interpreter with support for core JavaScript ES6+ features including OOP, exception handling, and comprehensive operator support.
 
 ## Features
 
@@ -234,7 +238,7 @@ Rust's portability ensures the engine runs on any platform supported by the Rust
 
 ## License
 
-This is a proof-of-concept educational project. Feel free to use and modify for learning purposes.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Comparison to V8
 
