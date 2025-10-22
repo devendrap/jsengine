@@ -1,6 +1,6 @@
 # JSEngine - JavaScript Engine in Rust
 
-[![CI](https://github.com/YOUR_USERNAME/jsengine/workflows/CI/badge.svg)](https://github.com/YOUR_USERNAME/jsengine/actions)
+[![CI](https://github.com/devendrap/jsengine/workflows/CI/badge.svg)](https://github.com/devendrap/jsengine/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/rust-1.90%2B-orange.svg)](https://www.rust-lang.org/)
 
