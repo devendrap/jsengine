@@ -30,6 +30,8 @@ pub enum Token {
     Finally,
     This,
     New,
+    InstanceOf,
+    In,
     TypeOf,
 
     // Operators
@@ -47,6 +49,14 @@ pub enum Token {
     StarEq,
     SlashEq,
     PercentEq,
+    BitAndEq,
+    BitOrEq,
+    BitXorEq,
+    ShlEq,
+    ShrEq,
+    UShrEq,
+    AndEq,
+    OrEq,
     EqEq,
     EqEqEq,
     Ne,
@@ -267,6 +277,8 @@ impl Lexer {
                 "finally" => Token::Finally,
                 "this" => Token::This,
                 "new" => Token::New,
+                "instanceof" => Token::InstanceOf,
+                "in" => Token::In,
                 "true" => Token::True,
                 "false" => Token::False,
                 "null" => Token::Null,
@@ -370,7 +382,12 @@ impl Lexer {
                     Token::Le
                 } else if self.current_char == Some('<') {
                     self.advance();
-                    Token::Shl
+                    if self.current_char == Some('=') {
+                        self.advance();
+                        Token::ShlEq
+                    } else {
+                        Token::Shl
+                    }
                 } else {
                     Token::Lt
                 }
@@ -384,7 +401,15 @@ impl Lexer {
                     self.advance();
                     if self.current_char == Some('>') {
                         self.advance();
-                        Token::UShr
+                        if self.current_char == Some('=') {
+                            self.advance();
+                            Token::UShrEq
+                        } else {
+                            Token::UShr
+                        }
+                    } else if self.current_char == Some('=') {
+                        self.advance();
+                        Token::ShrEq
                     } else {
                         Token::Shr
                     }
@@ -396,7 +421,15 @@ impl Lexer {
                 self.advance();
                 if self.current_char == Some('&') {
                     self.advance();
-                    Token::And
+                    if self.current_char == Some('=') {
+                        self.advance();
+                        Token::AndEq
+                    } else {
+                        Token::And
+                    }
+                } else if self.current_char == Some('=') {
+                    self.advance();
+                    Token::BitAndEq
                 } else {
                     Token::BitAnd
                 }
@@ -405,14 +438,27 @@ impl Lexer {
                 self.advance();
                 if self.current_char == Some('|') {
                     self.advance();
-                    Token::Or
+                    if self.current_char == Some('=') {
+                        self.advance();
+                        Token::OrEq
+                    } else {
+                        Token::Or
+                    }
+                } else if self.current_char == Some('=') {
+                    self.advance();
+                    Token::BitOrEq
                 } else {
                     Token::BitOr
                 }
             }
             '^' => {
                 self.advance();
-                Token::BitXor
+                if self.current_char == Some('=') {
+                    self.advance();
+                    Token::BitXorEq
+                } else {
+                    Token::BitXor
+                }
             }
             '~' => {
                 self.advance();

@@ -23,6 +23,7 @@ pub struct Function {
     pub params: Vec<String>,
     pub body: Vec<Stmt>,
     pub closure: Rc<RefCell<HashMap<String, Value>>>,
+    pub constructor: Option<String>, // Name of constructor function if created via 'new'
 }
 
 impl fmt::Debug for Function {

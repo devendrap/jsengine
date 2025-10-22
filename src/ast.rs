@@ -48,6 +48,13 @@ pub enum Expr {
         value: Box<Expr>,
     },
 
+    // Logical assignment (x &&= y, x ||= y)
+    LogicalAssignment {
+        target: String,
+        op: LogicalAssignOp,
+        value: Box<Expr>,
+    },
+
     // Update expression (++x, x++, --x, x--)
     Update {
         expr: Box<Expr>,
@@ -136,6 +143,13 @@ pub enum Stmt {
         body: Box<Stmt>,
     },
 
+    // For-in loop
+    ForIn {
+        variable: String,
+        object: Expr,
+        body: Box<Stmt>,
+    },
+
     // Function declaration
     FunctionDecl {
         name: String,
@@ -196,6 +210,10 @@ pub enum BinOp {
     And,
     Or,
 
+    // Relational
+    InstanceOf,
+    In,
+
     // Bitwise
     BitAnd,
     BitOr,
@@ -220,6 +238,12 @@ pub enum UpdateOp {
     Decrement, // --
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LogicalAssignOp {
+    And, // &&=
+    Or,  // ||=
+}
+
 impl fmt::Display for BinOp {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match self {
@@ -239,6 +263,8 @@ impl fmt::Display for BinOp {
             BinOp::Ge => ">=",
             BinOp::And => "&&",
             BinOp::Or => "||",
+            BinOp::InstanceOf => "instanceof",
+            BinOp::In => "in",
             BinOp::BitAnd => "&",
             BinOp::BitOr => "|",
             BinOp::BitXor => "^",

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
 use crate::ast::*;
-use crate::ast::UpdateOp;
+use crate::ast::{UpdateOp, LogicalAssignOp};
 use crate::value::{Value, Function, NativeFunction, NativeFn};
 
 pub struct Interpreter {
@@ -262,6 +262,54 @@ impl Interpreter {
                 Ok(ControlFlow::None)
             }
 
+            Stmt::ForIn { variable, object, body } => {
+                self.push_scope();
+                let was_in_loop = self.in_loop;
+                self.in_loop = true;
+
+                let obj = self.eval_expression(object)?;
+
+                // Get keys to iterate over
+                let keys: Vec<String> = match &obj {
+                    Value::Object(map) => map.borrow().keys().cloned().collect(),
+                    Value::Array(arr) => {
+                        // For arrays, iterate over indices
+                        (0..arr.borrow().len()).map(|i| i.to_string()).collect()
+                    }
+                    _ => Vec::new(),
+                };
+
+                for key in keys {
+                    self.declare_variable(variable, Value::String(key));
+
+                    match self.eval_statement(body)? {
+                        ControlFlow::Break => {
+                            self.break_flag = false;
+                            break;
+                        }
+                        ControlFlow::Continue => {
+                            self.continue_flag = false;
+                            continue;
+                        }
+                        ControlFlow::Return(val) => {
+                            self.in_loop = was_in_loop;
+                            self.pop_scope();
+                            return Ok(ControlFlow::Return(val));
+                        }
+                        ControlFlow::Throw(val) => {
+                            self.in_loop = was_in_loop;
+                            self.pop_scope();
+                            return Ok(ControlFlow::Throw(val));
+                        }
+                        ControlFlow::None => {}
+                    }
+                }
+
+                self.in_loop = was_in_loop;
+                self.pop_scope();
+                Ok(ControlFlow::None)
+            }
+
             Stmt::For { init, test, update, body } => {
                 self.push_scope();
                 let was_in_loop = self.in_loop;
@@ -315,6 +363,7 @@ impl Interpreter {
                     params: params.clone(),
                     body: body.clone(),
                     closure: self.current_scope(),
+                    constructor: None,
                 };
                 self.declare_variable(name, Value::Function(func));
                 Ok(ControlFlow::None)
@@ -487,6 +536,24 @@ impl Interpreter {
                 Ok(new_val)
             }
 
+            Expr::LogicalAssignment { target, op, value } => {
+                let current = self.get_variable(target)?;
+
+                // Short-circuit evaluation
+                let should_assign = match op {
+                    LogicalAssignOp::And => current.to_boolean(), // &&=: assign if current is truthy
+                    LogicalAssignOp::Or => !current.to_boolean(), // ||=: assign if current is falsy
+                };
+
+                if should_assign {
+                    let new_val = self.eval_expression(value)?;
+                    self.set_variable(target, new_val.clone());
+                    Ok(new_val)
+                } else {
+                    Ok(current)
+                }
+            }
+
             Expr::Update { expr, op, prefix } => {
                 // Get the current value
                 let name = match expr.as_ref() {
@@ -575,10 +642,23 @@ impl Interpreter {
                     args.iter().map(|arg| self.eval_expression(arg)).collect();
                 let arg_values = arg_values?;
 
+                // Get constructor name if available
+                let constructor_name = if let Expr::Identifier(name) = callee.as_ref() {
+                    Some(name.clone())
+                } else {
+                    None
+                };
+
                 match func {
                     Value::Function(f) => {
                         // Create new instance
                         let instance = Rc::new(RefCell::new(HashMap::new()));
+
+                        // Store constructor name for instanceof checks
+                        if let Some(name) = constructor_name {
+                            instance.borrow_mut().insert("__constructor__".to_string(), Value::String(name));
+                        }
+
                         let this_val = Value::Object(instance);
 
                         // Call constructor with new instance as 'this'
@@ -642,6 +722,7 @@ impl Interpreter {
                     params: params.clone(),
                     body: body.clone(),
                     closure: self.current_scope(),
+                    constructor: None,
                 };
                 Ok(Value::Function(func))
             }
@@ -653,6 +734,7 @@ impl Interpreter {
                     params: params.clone(),
                     body: vec![return_stmt],
                     closure: self.current_scope(),
+                    constructor: None,
                 };
                 Ok(Value::Function(func))
             }
@@ -745,6 +827,38 @@ impl Interpreter {
             BinOp::And | BinOp::Or => {
                 // These should be handled with short-circuit evaluation in eval_expression
                 unreachable!("Logical operators should be short-circuited")
+            }
+
+            BinOp::InstanceOf => {
+                // Check if left is an instance of right (constructor function)
+                match (left, right) {
+                    (Value::Object(obj), Value::Function(_)) => {
+                        // For now, simplified: check if object has __constructor__ property
+                        // In full JavaScript, this would check the prototype chain
+                        if let Some(Value::String(constructor_name)) = obj.borrow().get("__constructor__") {
+                            // Get the constructor function name from the right side
+                            // This is simplified - proper implementation needs prototype chain
+                            Ok(Value::Boolean(true)) // Simplified: assume true if object was created with 'new'
+                        } else {
+                            Ok(Value::Boolean(false))
+                        }
+                    }
+                    _ => Ok(Value::Boolean(false)),
+                }
+            }
+
+            BinOp::In => {
+                // Check if property exists in object
+                match (left, right) {
+                    (Value::String(prop), Value::Object(obj)) => {
+                        Ok(Value::Boolean(obj.borrow().contains_key(prop)))
+                    }
+                    (Value::Number(n), Value::Array(arr)) => {
+                        let idx = *n as usize;
+                        Ok(Value::Boolean(idx < arr.borrow().len()))
+                    }
+                    _ => Ok(Value::Boolean(false)),
+                }
             }
 
             BinOp::BitAnd => {

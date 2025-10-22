@@ -197,6 +197,33 @@ impl Parser {
         self.expect(Token::For)?;
         self.expect(Token::LParen)?;
 
+        // Try to detect for-in loop
+        let start_pos = self.position;
+
+        // Check if this is a for-in loop: for (var in obj)
+        if let Token::Identifier(var_name) = self.current() {
+            let var = var_name.clone();
+            self.advance();
+
+            if self.current() == &Token::In {
+                // This is a for-in loop
+                self.advance();
+                let object = self.expression()?;
+                self.expect(Token::RParen)?;
+                let body = Box::new(self.statement()?);
+
+                return Ok(Stmt::ForIn {
+                    variable: var,
+                    object,
+                    body,
+                });
+            }
+
+            // Not a for-in, reset and parse as regular for
+            self.position = start_pos;
+        }
+
+        // Regular for loop
         let init = if self.current() == &Token::Semicolon {
             self.advance();
             None
@@ -307,13 +334,27 @@ impl Parser {
         let expr = self.ternary()?;
 
         // Check for assignment operators
+        enum AssignmentType {
+            Regular,
+            Compound(BinOp),
+            Logical(LogicalAssignOp),
+        }
+
         let op = match self.current() {
-            Token::Eq => Some(None), // Regular assignment
-            Token::PlusEq => Some(Some(BinOp::Add)),
-            Token::MinusEq => Some(Some(BinOp::Sub)),
-            Token::StarEq => Some(Some(BinOp::Mul)),
-            Token::SlashEq => Some(Some(BinOp::Div)),
-            Token::PercentEq => Some(Some(BinOp::Mod)),
+            Token::Eq => Some(AssignmentType::Regular),
+            Token::PlusEq => Some(AssignmentType::Compound(BinOp::Add)),
+            Token::MinusEq => Some(AssignmentType::Compound(BinOp::Sub)),
+            Token::StarEq => Some(AssignmentType::Compound(BinOp::Mul)),
+            Token::SlashEq => Some(AssignmentType::Compound(BinOp::Div)),
+            Token::PercentEq => Some(AssignmentType::Compound(BinOp::Mod)),
+            Token::BitAndEq => Some(AssignmentType::Compound(BinOp::BitAnd)),
+            Token::BitOrEq => Some(AssignmentType::Compound(BinOp::BitOr)),
+            Token::BitXorEq => Some(AssignmentType::Compound(BinOp::BitXor)),
+            Token::ShlEq => Some(AssignmentType::Compound(BinOp::Shl)),
+            Token::ShrEq => Some(AssignmentType::Compound(BinOp::Shr)),
+            Token::UShrEq => Some(AssignmentType::Compound(BinOp::UShr)),
+            Token::AndEq => Some(AssignmentType::Logical(LogicalAssignOp::And)),
+            Token::OrEq => Some(AssignmentType::Logical(LogicalAssignOp::Or)),
             _ => None,
         };
 
@@ -324,10 +365,15 @@ impl Parser {
                     let value = Box::new(self.assignment()?);
 
                     return Ok(match op {
-                        None => Expr::Assignment { target: name, value },
-                        Some(bin_op) => Expr::CompoundAssignment {
+                        AssignmentType::Regular => Expr::Assignment { target: name, value },
+                        AssignmentType::Compound(bin_op) => Expr::CompoundAssignment {
                             target: name,
                             op: bin_op,
+                            value,
+                        },
+                        AssignmentType::Logical(logical_op) => Expr::LogicalAssignment {
+                            target: name,
+                            op: logical_op,
                             value,
                         },
                     });
@@ -337,9 +383,8 @@ impl Parser {
                     let value = Box::new(self.assignment()?);
 
                     // For now, only support simple assignment on members
-                    // Compound assignment on members would require member compound assignment node
-                    if op.is_some() {
-                        return Err("Compound assignment on member expressions not yet supported".to_string());
+                    if !matches!(op, AssignmentType::Regular) {
+                        return Err("Compound/logical assignment on member expressions not yet supported".to_string());
                     }
 
                     return Ok(Expr::MemberAssignment {
@@ -486,6 +531,8 @@ impl Parser {
                 Token::Le => BinOp::Le,
                 Token::Gt => BinOp::Gt,
                 Token::Ge => BinOp::Ge,
+                Token::InstanceOf => BinOp::InstanceOf,
+                Token::In => BinOp::In,
                 _ => break,
             };
             self.advance();
