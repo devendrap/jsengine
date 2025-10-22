@@ -290,3 +290,6 @@ Inspired by:
 - Boa JavaScript Engine (Rust)
 - Test262 - Official ECMAScript Conformance Test Suite (TC39)
 - Crafting Interpreters (Robert Nystrom)
+
+---
+*Built with ❤️ in Rust*
