@@ -271,6 +271,161 @@ impl Interpreter {
         math_obj.borrow_mut().insert("E".to_string(), Value::Number(std::f64::consts::E));
 
         self.set_variable("Math", Value::Object(math_obj));
+
+        // Object methods
+        let object_obj = Rc::new(RefCell::new(HashMap::new()));
+
+        // Object.keys
+        let keys_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Err("Object.keys requires an argument".to_string());
+            }
+            match &args[0] {
+                Value::Object(map) => {
+                    let keys: Vec<Value> = map.borrow().keys()
+                        .map(|k| Value::String(k.clone()))
+                        .collect();
+                    Ok(Value::Array(Rc::new(RefCell::new(keys))))
+                }
+                Value::Array(arr) => {
+                    let keys: Vec<Value> = (0..arr.borrow().len())
+                        .map(|i| Value::String(i.to_string()))
+                        .collect();
+                    Ok(Value::Array(Rc::new(RefCell::new(keys))))
+                }
+                _ => Ok(Value::Array(Rc::new(RefCell::new(vec![]))))
+            }
+        });
+        object_obj.borrow_mut().insert("keys".to_string(), Value::NativeFunction(NativeFunction {
+            name: "keys".to_string(),
+            func: keys_fn,
+        }));
+
+        // Object.values
+        let values_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Err("Object.values requires an argument".to_string());
+            }
+            match &args[0] {
+                Value::Object(map) => {
+                    let values: Vec<Value> = map.borrow().values().cloned().collect();
+                    Ok(Value::Array(Rc::new(RefCell::new(values))))
+                }
+                Value::Array(arr) => {
+                    Ok(Value::Array(Rc::new(RefCell::new(arr.borrow().clone()))))
+                }
+                _ => Ok(Value::Array(Rc::new(RefCell::new(vec![]))))
+            }
+        });
+        object_obj.borrow_mut().insert("values".to_string(), Value::NativeFunction(NativeFunction {
+            name: "values".to_string(),
+            func: values_fn,
+        }));
+
+        // Object.entries
+        let entries_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Err("Object.entries requires an argument".to_string());
+            }
+            match &args[0] {
+                Value::Object(map) => {
+                    let entries: Vec<Value> = map.borrow().iter()
+                        .map(|(k, v)| {
+                            Value::Array(Rc::new(RefCell::new(vec![
+                                Value::String(k.clone()),
+                                v.clone()
+                            ])))
+                        })
+                        .collect();
+                    Ok(Value::Array(Rc::new(RefCell::new(entries))))
+                }
+                Value::Array(arr) => {
+                    let entries: Vec<Value> = arr.borrow().iter().enumerate()
+                        .map(|(i, v)| {
+                            Value::Array(Rc::new(RefCell::new(vec![
+                                Value::String(i.to_string()),
+                                v.clone()
+                            ])))
+                        })
+                        .collect();
+                    Ok(Value::Array(Rc::new(RefCell::new(entries))))
+                }
+                _ => Ok(Value::Array(Rc::new(RefCell::new(vec![]))))
+            }
+        });
+        object_obj.borrow_mut().insert("entries".to_string(), Value::NativeFunction(NativeFunction {
+            name: "entries".to_string(),
+            func: entries_fn,
+        }));
+
+        // Object.assign
+        let assign_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Err("Object.assign requires at least one argument".to_string());
+            }
+            let target = match &args[0] {
+                Value::Object(map) => map.clone(),
+                _ => return Err("Object.assign target must be an object".to_string()),
+            };
+
+            for i in 1..args.len() {
+                if let Value::Object(source) = &args[i] {
+                    for (k, v) in source.borrow().iter() {
+                        target.borrow_mut().insert(k.clone(), v.clone());
+                    }
+                }
+            }
+            Ok(Value::Object(target))
+        });
+        object_obj.borrow_mut().insert("assign".to_string(), Value::NativeFunction(NativeFunction {
+            name: "assign".to_string(),
+            func: assign_fn,
+        }));
+
+        // Object.create
+        let create_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Ok(Value::Object(Rc::new(RefCell::new(HashMap::new()))));
+            }
+            // For now, just create an empty object (simplified - doesn't handle prototype chain)
+            Ok(Value::Object(Rc::new(RefCell::new(HashMap::new()))))
+        });
+        object_obj.borrow_mut().insert("create".to_string(), Value::NativeFunction(NativeFunction {
+            name: "create".to_string(),
+            func: create_fn,
+        }));
+
+        self.set_variable("Object", Value::Object(object_obj));
+
+        // JSON object
+        let json_obj = Rc::new(RefCell::new(HashMap::new()));
+
+        // JSON.stringify
+        let stringify_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Ok(Value::String("undefined".to_string()));
+            }
+            Ok(Value::String(value_to_json(&args[0])))
+        });
+        json_obj.borrow_mut().insert("stringify".to_string(), Value::NativeFunction(NativeFunction {
+            name: "stringify".to_string(),
+            func: stringify_fn,
+        }));
+
+        // JSON.parse
+        let parse_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Err("JSON.parse requires a string argument".to_string());
+            }
+            let json_str = args[0].to_string();
+            parse_json(&json_str)
+        });
+        json_obj.borrow_mut().insert("parse".to_string(), Value::NativeFunction(NativeFunction {
+            name: "parse".to_string(),
+            func: parse_fn,
+        }));
+
+        self.set_variable("JSON", Value::Object(json_obj));
     }
 
     fn current_scope(&self) -> Rc<RefCell<HashMap<String, Value>>> {
@@ -975,6 +1130,98 @@ impl Interpreter {
                                 }
                                 return Ok(accumulator);
                             }
+                            "find" => {
+                                if args.is_empty() {
+                                    return Err("find requires a callback function".to_string());
+                                }
+                                let callback = self.eval_expression(&args[0])?;
+                                let arr_borrow = arr.borrow();
+                                for (i, val) in arr_borrow.iter().enumerate() {
+                                    let call_args = vec![val.clone(), Value::Number(i as f64), Value::Array(arr.clone())];
+                                    let found = match &callback {
+                                        Value::Function(f) => self.call_function(f, &call_args, Value::Undefined)?,
+                                        Value::NativeFunction(nf) => (nf.func)(&call_args)?,
+                                        _ => return Err("find callback must be a function".to_string()),
+                                    };
+                                    if found.to_boolean() {
+                                        return Ok(val.clone());
+                                    }
+                                }
+                                return Ok(Value::Undefined);
+                            }
+                            "findIndex" => {
+                                if args.is_empty() {
+                                    return Err("findIndex requires a callback function".to_string());
+                                }
+                                let callback = self.eval_expression(&args[0])?;
+                                let arr_borrow = arr.borrow();
+                                for (i, val) in arr_borrow.iter().enumerate() {
+                                    let call_args = vec![val.clone(), Value::Number(i as f64), Value::Array(arr.clone())];
+                                    let found = match &callback {
+                                        Value::Function(f) => self.call_function(f, &call_args, Value::Undefined)?,
+                                        Value::NativeFunction(nf) => (nf.func)(&call_args)?,
+                                        _ => return Err("findIndex callback must be a function".to_string()),
+                                    };
+                                    if found.to_boolean() {
+                                        return Ok(Value::Number(i as f64));
+                                    }
+                                }
+                                return Ok(Value::Number(-1.0));
+                            }
+                            "some" => {
+                                if args.is_empty() {
+                                    return Err("some requires a callback function".to_string());
+                                }
+                                let callback = self.eval_expression(&args[0])?;
+                                let arr_borrow = arr.borrow();
+                                for (i, val) in arr_borrow.iter().enumerate() {
+                                    let call_args = vec![val.clone(), Value::Number(i as f64), Value::Array(arr.clone())];
+                                    let result = match &callback {
+                                        Value::Function(f) => self.call_function(f, &call_args, Value::Undefined)?,
+                                        Value::NativeFunction(nf) => (nf.func)(&call_args)?,
+                                        _ => return Err("some callback must be a function".to_string()),
+                                    };
+                                    if result.to_boolean() {
+                                        return Ok(Value::Boolean(true));
+                                    }
+                                }
+                                return Ok(Value::Boolean(false));
+                            }
+                            "every" => {
+                                if args.is_empty() {
+                                    return Err("every requires a callback function".to_string());
+                                }
+                                let callback = self.eval_expression(&args[0])?;
+                                let arr_borrow = arr.borrow();
+                                for (i, val) in arr_borrow.iter().enumerate() {
+                                    let call_args = vec![val.clone(), Value::Number(i as f64), Value::Array(arr.clone())];
+                                    let result = match &callback {
+                                        Value::Function(f) => self.call_function(f, &call_args, Value::Undefined)?,
+                                        Value::NativeFunction(nf) => (nf.func)(&call_args)?,
+                                        _ => return Err("every callback must be a function".to_string()),
+                                    };
+                                    if !result.to_boolean() {
+                                        return Ok(Value::Boolean(false));
+                                    }
+                                }
+                                return Ok(Value::Boolean(true));
+                            }
+                            "forEach" => {
+                                if args.is_empty() {
+                                    return Err("forEach requires a callback function".to_string());
+                                }
+                                let callback = self.eval_expression(&args[0])?;
+                                let arr_borrow = arr.borrow();
+                                for (i, val) in arr_borrow.iter().enumerate() {
+                                    let call_args = vec![val.clone(), Value::Number(i as f64), Value::Array(arr.clone())];
+                                    match &callback {
+                                        Value::Function(f) => { self.call_function(f, &call_args, Value::Undefined)?; },
+                                        Value::NativeFunction(nf) => { (nf.func)(&call_args)?; },
+                                        _ => return Err("forEach callback must be a function".to_string()),
+                                    };
+                                }
+                                return Ok(Value::Undefined);
+                            }
                             _ => {}
                         }
                     }
@@ -1052,6 +1299,21 @@ impl Interpreter {
 
                 match obj {
                     Value::Object(map) => {
+                        // Check for hasOwnProperty method
+                        if prop_name == "hasOwnProperty" {
+                            let map_clone = map.clone();
+                            let has_own_fn: NativeFn = Rc::new(move |args| {
+                                if args.is_empty() {
+                                    return Ok(Value::Boolean(false));
+                                }
+                                let key = args[0].to_string();
+                                Ok(Value::Boolean(map_clone.borrow().contains_key(&key)))
+                            });
+                            return Ok(Value::NativeFunction(NativeFunction {
+                                name: "hasOwnProperty".to_string(),
+                                func: has_own_fn,
+                            }));
+                        }
                         Ok(map.borrow().get(&prop_name).cloned().unwrap_or(Value::Undefined))
                     }
                     Value::Array(arr) => {
@@ -1188,6 +1450,75 @@ impl Interpreter {
                                         func: splice_fn,
                                     }))
                                 }
+                                "join" => {
+                                    let arr_clone = arr.clone();
+                                    let join_fn: NativeFn = Rc::new(move |args| {
+                                        let separator = if args.is_empty() {
+                                            ","
+                                        } else {
+                                            &args[0].to_string()
+                                        };
+                                        let joined = arr_clone.borrow().iter()
+                                            .map(|v| v.to_string())
+                                            .collect::<Vec<_>>()
+                                            .join(separator);
+                                        Ok(Value::String(joined))
+                                    });
+                                    Ok(Value::NativeFunction(NativeFunction {
+                                        name: "join".to_string(),
+                                        func: join_fn,
+                                    }))
+                                }
+                                "reverse" => {
+                                    let arr_clone = arr.clone();
+                                    let reverse_fn: NativeFn = Rc::new(move |_args| {
+                                        let mut arr_mut = arr_clone.borrow_mut();
+                                        arr_mut.reverse();
+                                        Ok(Value::Array(arr_clone.clone()))
+                                    });
+                                    Ok(Value::NativeFunction(NativeFunction {
+                                        name: "reverse".to_string(),
+                                        func: reverse_fn,
+                                    }))
+                                }
+                                "concat" => {
+                                    let arr_clone = arr.clone();
+                                    let concat_fn: NativeFn = Rc::new(move |args| {
+                                        let mut result = arr_clone.borrow().clone();
+                                        for arg in args {
+                                            match arg {
+                                                Value::Array(other_arr) => {
+                                                    result.extend(other_arr.borrow().clone());
+                                                }
+                                                _ => result.push(arg.clone()),
+                                            }
+                                        }
+                                        Ok(Value::Array(Rc::new(RefCell::new(result))))
+                                    });
+                                    Ok(Value::NativeFunction(NativeFunction {
+                                        name: "concat".to_string(),
+                                        func: concat_fn,
+                                    }))
+                                }
+                                "includes" => {
+                                    let arr_clone = arr.clone();
+                                    let includes_fn: NativeFn = Rc::new(move |args| {
+                                        if args.is_empty() {
+                                            return Ok(Value::Boolean(false));
+                                        }
+                                        let search = &args[0];
+                                        for val in arr_clone.borrow().iter() {
+                                            if val.strict_equals(search) {
+                                                return Ok(Value::Boolean(true));
+                                            }
+                                        }
+                                        Ok(Value::Boolean(false))
+                                    });
+                                    Ok(Value::NativeFunction(NativeFunction {
+                                        name: "includes".to_string(),
+                                        func: includes_fn,
+                                    }))
+                                }
                                 _ => Ok(Value::Undefined),
                             }
                         }
@@ -1295,6 +1626,173 @@ impl Interpreter {
                                 });
                                 Ok(Value::NativeFunction(NativeFunction {
                                     name: "indexOf".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "charAt" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |args| {
+                                    if args.is_empty() {
+                                        return Ok(Value::String(String::new()));
+                                    }
+                                    let idx = args[0].to_number().unwrap_or(0.0) as usize;
+                                    let ch = s_clone.chars().nth(idx).map(|c| c.to_string()).unwrap_or_default();
+                                    Ok(Value::String(ch))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "charAt".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "charCodeAt" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |args| {
+                                    if args.is_empty() {
+                                        return Ok(Value::Number(f64::NAN));
+                                    }
+                                    let idx = args[0].to_number().unwrap_or(0.0) as usize;
+                                    match s_clone.chars().nth(idx) {
+                                        Some(ch) => Ok(Value::Number(ch as u32 as f64)),
+                                        None => Ok(Value::Number(f64::NAN)),
+                                    }
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "charCodeAt".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "trim" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |_args| {
+                                    Ok(Value::String(s_clone.trim().to_string()))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "trim".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "replace" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |args| {
+                                    if args.len() < 2 {
+                                        return Ok(Value::String(s_clone.clone()));
+                                    }
+                                    let search = args[0].to_string();
+                                    let replace_with = args[1].to_string();
+                                    // Simple replace - only replaces first occurrence
+                                    let result = s_clone.replacen(&search, &replace_with, 1);
+                                    Ok(Value::String(result))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "replace".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "startsWith" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |args| {
+                                    if args.is_empty() {
+                                        return Ok(Value::Boolean(false));
+                                    }
+                                    let search = args[0].to_string();
+                                    Ok(Value::Boolean(s_clone.starts_with(&search)))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "startsWith".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "endsWith" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |args| {
+                                    if args.is_empty() {
+                                        return Ok(Value::Boolean(false));
+                                    }
+                                    let search = args[0].to_string();
+                                    Ok(Value::Boolean(s_clone.ends_with(&search)))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "endsWith".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "includes" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |args| {
+                                    if args.is_empty() {
+                                        return Ok(Value::Boolean(false));
+                                    }
+                                    let search = args[0].to_string();
+                                    Ok(Value::Boolean(s_clone.contains(&search)))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "includes".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "repeat" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |args| {
+                                    if args.is_empty() {
+                                        return Ok(Value::String(String::new()));
+                                    }
+                                    let count = args[0].to_number().unwrap_or(0.0) as usize;
+                                    Ok(Value::String(s_clone.repeat(count)))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "repeat".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "padStart" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |args| {
+                                    if args.is_empty() {
+                                        return Ok(Value::String(s_clone.clone()));
+                                    }
+                                    let target_len = args[0].to_number().unwrap_or(0.0) as usize;
+                                    let pad_str = if args.len() > 1 {
+                                        args[1].to_string()
+                                    } else {
+                                        " ".to_string()
+                                    };
+                                    let current_len = s_clone.chars().count();
+                                    if current_len >= target_len {
+                                        return Ok(Value::String(s_clone.clone()));
+                                    }
+                                    let pad_len = target_len - current_len;
+                                    let padding = pad_str.repeat((pad_len + pad_str.len() - 1) / pad_str.len());
+                                    let padding: String = padding.chars().take(pad_len).collect();
+                                    Ok(Value::String(format!("{}{}", padding, s_clone)))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "padStart".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "padEnd" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |args| {
+                                    if args.is_empty() {
+                                        return Ok(Value::String(s_clone.clone()));
+                                    }
+                                    let target_len = args[0].to_number().unwrap_or(0.0) as usize;
+                                    let pad_str = if args.len() > 1 {
+                                        args[1].to_string()
+                                    } else {
+                                        " ".to_string()
+                                    };
+                                    let current_len = s_clone.chars().count();
+                                    if current_len >= target_len {
+                                        return Ok(Value::String(s_clone.clone()));
+                                    }
+                                    let pad_len = target_len - current_len;
+                                    let padding = pad_str.repeat((pad_len + pad_str.len() - 1) / pad_str.len());
+                                    let padding: String = padding.chars().take(pad_len).collect();
+                                    Ok(Value::String(format!("{}{}", s_clone, padding)))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "padEnd".to_string(),
                                     func: fn_impl,
                                 }))
                             }
@@ -1509,4 +2007,210 @@ impl Interpreter {
             UnaryOp::TypeOf => Ok(Value::String(val.type_of().to_string())),
         }
     }
+}
+
+// JSON stringify helper
+fn value_to_json(val: &Value) -> String {
+    match val {
+        Value::Null => "null".to_string(),
+        Value::Undefined => "null".to_string(), // JSON doesn't have undefined
+        Value::Boolean(b) => b.to_string(),
+        Value::Number(n) => {
+            if n.is_finite() {
+                if n.fract() == 0.0 && n.abs() < 1e15 {
+                    format!("{:.0}", n)
+                } else {
+                    n.to_string()
+                }
+            } else {
+                "null".to_string()
+            }
+        }
+        Value::String(s) => {
+            // Escape special characters
+            let escaped = s
+                .replace('\\', "\\\\")
+                .replace('"', "\\\"")
+                .replace('\n', "\\n")
+                .replace('\r', "\\r")
+                .replace('\t', "\\t");
+            format!("\"{}\"", escaped)
+        }
+        Value::Array(arr) => {
+            let elements: Vec<String> = arr.borrow().iter()
+                .map(|v| value_to_json(v))
+                .collect();
+            format!("[{}]", elements.join(","))
+        }
+        Value::Object(map) => {
+            let pairs: Vec<String> = map.borrow().iter()
+                .map(|(k, v)| format!("\"{}\":{}", k, value_to_json(v)))
+                .collect();
+            format!("{{{}}}", pairs.join(","))
+        }
+        Value::Function(_) | Value::NativeFunction(_) => "null".to_string(),
+    }
+}
+
+// JSON parse helper - simplified implementation
+fn parse_json(json: &str) -> Result<Value, String> {
+    let trimmed = json.trim();
+
+    // null
+    if trimmed == "null" {
+        return Ok(Value::Null);
+    }
+
+    // boolean
+    if trimmed == "true" {
+        return Ok(Value::Boolean(true));
+    }
+    if trimmed == "false" {
+        return Ok(Value::Boolean(false));
+    }
+
+    // number
+    if let Ok(n) = trimmed.parse::<f64>() {
+        return Ok(Value::Number(n));
+    }
+
+    // string
+    if trimmed.starts_with('"') && trimmed.ends_with('"') {
+        let content = &trimmed[1..trimmed.len()-1];
+        // Unescape
+        let unescaped = content
+            .replace("\\\"", "\"")
+            .replace("\\\\", "\\")
+            .replace("\\n", "\n")
+            .replace("\\r", "\r")
+            .replace("\\t", "\t");
+        return Ok(Value::String(unescaped));
+    }
+
+    // array
+    if trimmed.starts_with('[') && trimmed.ends_with(']') {
+        let content = &trimmed[1..trimmed.len()-1].trim();
+        if content.is_empty() {
+            return Ok(Value::Array(Rc::new(RefCell::new(vec![]))));
+        }
+
+        let mut elements = vec![];
+        let mut depth = 0;
+        let mut current = String::new();
+        let mut in_string = false;
+        let mut escape_next = false;
+
+        for ch in content.chars() {
+            if escape_next {
+                current.push(ch);
+                escape_next = false;
+                continue;
+            }
+
+            if ch == '\\' && in_string {
+                current.push(ch);
+                escape_next = true;
+                continue;
+            }
+
+            if ch == '"' {
+                in_string = !in_string;
+                current.push(ch);
+                continue;
+            }
+
+            if !in_string {
+                if ch == '[' || ch == '{' {
+                    depth += 1;
+                } else if ch == ']' || ch == '}' {
+                    depth -= 1;
+                } else if ch == ',' && depth == 0 {
+                    elements.push(parse_json(current.trim())?);
+                    current.clear();
+                    continue;
+                }
+            }
+
+            current.push(ch);
+        }
+
+        if !current.trim().is_empty() {
+            elements.push(parse_json(current.trim())?);
+        }
+
+        return Ok(Value::Array(Rc::new(RefCell::new(elements))));
+    }
+
+    // object
+    if trimmed.starts_with('{') && trimmed.ends_with('}') {
+        let content = &trimmed[1..trimmed.len()-1].trim();
+        if content.is_empty() {
+            return Ok(Value::Object(Rc::new(RefCell::new(HashMap::new()))));
+        }
+
+        let mut map = HashMap::new();
+        let mut depth = 0;
+        let mut current = String::new();
+        let mut in_string = false;
+        let mut escape_next = false;
+
+        for ch in content.chars() {
+            if escape_next {
+                current.push(ch);
+                escape_next = false;
+                continue;
+            }
+
+            if ch == '\\' && in_string {
+                current.push(ch);
+                escape_next = true;
+                continue;
+            }
+
+            if ch == '"' {
+                in_string = !in_string;
+                current.push(ch);
+                continue;
+            }
+
+            if !in_string {
+                if ch == '[' || ch == '{' {
+                    depth += 1;
+                } else if ch == ']' || ch == '}' {
+                    depth -= 1;
+                } else if ch == ',' && depth == 0 {
+                    parse_key_value(&current, &mut map)?;
+                    current.clear();
+                    continue;
+                }
+            }
+
+            current.push(ch);
+        }
+
+        if !current.trim().is_empty() {
+            parse_key_value(&current, &mut map)?;
+        }
+
+        return Ok(Value::Object(Rc::new(RefCell::new(map))));
+    }
+
+    Err(format!("Invalid JSON: {}", trimmed))
+}
+
+fn parse_key_value(pair: &str, map: &mut HashMap<String, Value>) -> Result<(), String> {
+    let parts: Vec<&str> = pair.splitn(2, ':').collect();
+    if parts.len() != 2 {
+        return Err(format!("Invalid key-value pair: {}", pair));
+    }
+
+    let key = parts[0].trim();
+    if !key.starts_with('"') || !key.ends_with('"') {
+        return Err(format!("Invalid key: {}", key));
+    }
+    let key = &key[1..key.len()-1];
+
+    let value = parse_json(parts[1].trim())?;
+    map.insert(key.to_string(), value);
+    Ok(())
 }
