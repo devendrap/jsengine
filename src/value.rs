@@ -32,7 +32,7 @@ impl fmt::Debug for Function {
     }
 }
 
-pub type NativeFn = fn(&[Value]) -> Result<Value, String>;
+pub type NativeFn = Rc<dyn Fn(&[Value]) -> Result<Value, String>>;
 
 #[derive(Clone)]
 pub struct NativeFunction {

@@ -43,11 +43,11 @@ impl Interpreter {
 
     fn init_globals(&mut self) {
         // console.log
-        let console_log: NativeFn = |args| {
+        let console_log: NativeFn = Rc::new(|args| {
             let output: Vec<String> = args.iter().map(|v| v.to_string()).collect();
             println!("{}", output.join(" "));
             Ok(Value::Undefined)
-        };
+        });
 
         let console = Rc::new(RefCell::new(HashMap::new()));
         console.borrow_mut().insert(
@@ -61,7 +61,7 @@ impl Interpreter {
         self.set_variable("console", Value::Object(console));
 
         // Global functions
-        let parse_int: NativeFn = |args| {
+        let parse_int: NativeFn = Rc::new(|args| {
             if args.is_empty() {
                 return Ok(Value::Number(f64::NAN));
             }
@@ -70,9 +70,9 @@ impl Interpreter {
                 Ok(n) => Ok(Value::Number(n.trunc())),
                 Err(_) => Ok(Value::Number(f64::NAN)),
             }
-        };
+        });
 
-        let parse_float: NativeFn = |args| {
+        let parse_float: NativeFn = Rc::new(|args| {
             if args.is_empty() {
                 return Ok(Value::Number(f64::NAN));
             }
@@ -80,9 +80,9 @@ impl Interpreter {
                 Ok(n) => Ok(Value::Number(n)),
                 Err(_) => Ok(Value::Number(f64::NAN)),
             }
-        };
+        });
 
-        let is_nan: NativeFn = |args| {
+        let is_nan: NativeFn = Rc::new(|args| {
             if args.is_empty() {
                 return Ok(Value::Boolean(true));
             }
@@ -90,7 +90,7 @@ impl Interpreter {
                 Ok(n) => Ok(Value::Boolean(n.is_nan())),
                 Err(_) => Ok(Value::Boolean(true)),
             }
-        };
+        });
 
         self.set_variable("parseInt", Value::NativeFunction(NativeFunction {
             name: "parseInt".to_string(),
@@ -111,7 +111,7 @@ impl Interpreter {
         let math_obj = Rc::new(RefCell::new(HashMap::new()));
 
         // Math.floor
-        let floor_fn: NativeFn = |args| {
+        let floor_fn: NativeFn = Rc::new(|args| {
             if args.is_empty() {
                 return Ok(Value::Number(f64::NAN));
             }
@@ -119,14 +119,14 @@ impl Interpreter {
                 Ok(n) => Ok(Value::Number(n.floor())),
                 Err(_) => Ok(Value::Number(f64::NAN)),
             }
-        };
+        });
         math_obj.borrow_mut().insert("floor".to_string(), Value::NativeFunction(NativeFunction {
             name: "floor".to_string(),
             func: floor_fn,
         }));
 
         // Math.ceil
-        let ceil_fn: NativeFn = |args| {
+        let ceil_fn: NativeFn = Rc::new(|args| {
             if args.is_empty() {
                 return Ok(Value::Number(f64::NAN));
             }
@@ -134,14 +134,14 @@ impl Interpreter {
                 Ok(n) => Ok(Value::Number(n.ceil())),
                 Err(_) => Ok(Value::Number(f64::NAN)),
             }
-        };
+        });
         math_obj.borrow_mut().insert("ceil".to_string(), Value::NativeFunction(NativeFunction {
             name: "ceil".to_string(),
             func: ceil_fn,
         }));
 
         // Math.round
-        let round_fn: NativeFn = |args| {
+        let round_fn: NativeFn = Rc::new(|args| {
             if args.is_empty() {
                 return Ok(Value::Number(f64::NAN));
             }
@@ -149,14 +149,14 @@ impl Interpreter {
                 Ok(n) => Ok(Value::Number(n.round())),
                 Err(_) => Ok(Value::Number(f64::NAN)),
             }
-        };
+        });
         math_obj.borrow_mut().insert("round".to_string(), Value::NativeFunction(NativeFunction {
             name: "round".to_string(),
             func: round_fn,
         }));
 
         // Math.abs
-        let abs_fn: NativeFn = |args| {
+        let abs_fn: NativeFn = Rc::new(|args| {
             if args.is_empty() {
                 return Ok(Value::Number(f64::NAN));
             }
@@ -164,14 +164,14 @@ impl Interpreter {
                 Ok(n) => Ok(Value::Number(n.abs())),
                 Err(_) => Ok(Value::Number(f64::NAN)),
             }
-        };
+        });
         math_obj.borrow_mut().insert("abs".to_string(), Value::NativeFunction(NativeFunction {
             name: "abs".to_string(),
             func: abs_fn,
         }));
 
         // Math.sqrt
-        let sqrt_fn: NativeFn = |args| {
+        let sqrt_fn: NativeFn = Rc::new(|args| {
             if args.is_empty() {
                 return Ok(Value::Number(f64::NAN));
             }
@@ -179,14 +179,14 @@ impl Interpreter {
                 Ok(n) => Ok(Value::Number(n.sqrt())),
                 Err(_) => Ok(Value::Number(f64::NAN)),
             }
-        };
+        });
         math_obj.borrow_mut().insert("sqrt".to_string(), Value::NativeFunction(NativeFunction {
             name: "sqrt".to_string(),
             func: sqrt_fn,
         }));
 
         // Math.pow
-        let pow_fn: NativeFn = |args| {
+        let pow_fn: NativeFn = Rc::new(|args| {
             if args.len() < 2 {
                 return Ok(Value::Number(f64::NAN));
             }
@@ -194,14 +194,14 @@ impl Interpreter {
                 (Ok(base), Ok(exp)) => Ok(Value::Number(base.powf(exp))),
                 _ => Ok(Value::Number(f64::NAN)),
             }
-        };
+        });
         math_obj.borrow_mut().insert("pow".to_string(), Value::NativeFunction(NativeFunction {
             name: "pow".to_string(),
             func: pow_fn,
         }));
 
         // Math.min
-        let min_fn: NativeFn = |args| {
+        let min_fn: NativeFn = Rc::new(|args| {
             if args.is_empty() {
                 return Ok(Value::Number(f64::INFINITY));
             }
@@ -218,14 +218,14 @@ impl Interpreter {
                 }
             }
             Ok(Value::Number(min))
-        };
+        });
         math_obj.borrow_mut().insert("min".to_string(), Value::NativeFunction(NativeFunction {
             name: "min".to_string(),
             func: min_fn,
         }));
 
         // Math.max
-        let max_fn: NativeFn = |args| {
+        let max_fn: NativeFn = Rc::new(|args| {
             if args.is_empty() {
                 return Ok(Value::Number(f64::NEG_INFINITY));
             }
@@ -242,14 +242,14 @@ impl Interpreter {
                 }
             }
             Ok(Value::Number(max))
-        };
+        });
         math_obj.borrow_mut().insert("max".to_string(), Value::NativeFunction(NativeFunction {
             name: "max".to_string(),
             func: max_fn,
         }));
 
         // Math.random
-        let random_fn: NativeFn = |_args| {
+        let random_fn: NativeFn = Rc::new(|_args| {
             use std::collections::hash_map::RandomState;
             use std::hash::{BuildHasher, Hasher};
             let s = RandomState::new();
@@ -260,7 +260,7 @@ impl Interpreter {
                 .as_nanos() as u64);
             let hash = hasher.finish();
             Ok(Value::Number((hash as f64) / (u64::MAX as f64)))
-        };
+        });
         math_obj.borrow_mut().insert("random".to_string(), Value::NativeFunction(NativeFunction {
             name: "random".to_string(),
             func: random_fn,
@@ -1064,12 +1064,12 @@ impl Interpreter {
                             match prop_name.as_str() {
                                 "push" => {
                                     let arr_clone = arr.clone();
-                                    let push_fn: NativeFn = move |args| {
+                                    let push_fn: NativeFn = Rc::new(move |args| {
                                         for arg in args {
                                             arr_clone.borrow_mut().push(arg.clone());
                                         }
                                         Ok(Value::Number(arr_clone.borrow().len() as f64))
-                                    };
+                                    });
                                     Ok(Value::NativeFunction(NativeFunction {
                                         name: "push".to_string(),
                                         func: push_fn,
@@ -1077,9 +1077,9 @@ impl Interpreter {
                                 }
                                 "pop" => {
                                     let arr_clone = arr.clone();
-                                    let pop_fn: NativeFn = move |_args| {
+                                    let pop_fn: NativeFn = Rc::new(move |_args| {
                                         Ok(arr_clone.borrow_mut().pop().unwrap_or(Value::Undefined))
-                                    };
+                                    });
                                     Ok(Value::NativeFunction(NativeFunction {
                                         name: "pop".to_string(),
                                         func: pop_fn,
@@ -1087,14 +1087,14 @@ impl Interpreter {
                                 }
                                 "shift" => {
                                     let arr_clone = arr.clone();
-                                    let shift_fn: NativeFn = move |_args| {
+                                    let shift_fn: NativeFn = Rc::new(move |_args| {
                                         let mut arr_mut = arr_clone.borrow_mut();
                                         if arr_mut.is_empty() {
                                             Ok(Value::Undefined)
                                         } else {
                                             Ok(arr_mut.remove(0))
                                         }
-                                    };
+                                    });
                                     Ok(Value::NativeFunction(NativeFunction {
                                         name: "shift".to_string(),
                                         func: shift_fn,
@@ -1102,13 +1102,13 @@ impl Interpreter {
                                 }
                                 "unshift" => {
                                     let arr_clone = arr.clone();
-                                    let unshift_fn: NativeFn = move |args| {
+                                    let unshift_fn: NativeFn = Rc::new(move |args| {
                                         let mut arr_mut = arr_clone.borrow_mut();
                                         for (i, arg) in args.iter().enumerate() {
                                             arr_mut.insert(i, arg.clone());
                                         }
                                         Ok(Value::Number(arr_mut.len() as f64))
-                                    };
+                                    });
                                     Ok(Value::NativeFunction(NativeFunction {
                                         name: "unshift".to_string(),
                                         func: unshift_fn,
@@ -1116,7 +1116,7 @@ impl Interpreter {
                                 }
                                 "indexOf" => {
                                     let arr_clone = arr.clone();
-                                    let indexof_fn: NativeFn = move |args| {
+                                    let indexof_fn: NativeFn = Rc::new(move |args| {
                                         if args.is_empty() {
                                             return Ok(Value::Number(-1.0));
                                         }
@@ -1128,7 +1128,7 @@ impl Interpreter {
                                             }
                                         }
                                         Ok(Value::Number(-1.0))
-                                    };
+                                    });
                                     Ok(Value::NativeFunction(NativeFunction {
                                         name: "indexOf".to_string(),
                                         func: indexof_fn,
@@ -1136,7 +1136,7 @@ impl Interpreter {
                                 }
                                 "slice" => {
                                     let arr_clone = arr.clone();
-                                    let slice_fn: NativeFn = move |args| {
+                                    let slice_fn: NativeFn = Rc::new(move |args| {
                                         let arr_borrow = arr_clone.borrow();
                                         let len = arr_borrow.len() as i32;
                                         let start = if args.is_empty() {
@@ -1153,7 +1153,7 @@ impl Interpreter {
                                         };
                                         let result: Vec<Value> = arr_borrow[start as usize..end.max(start) as usize].to_vec();
                                         Ok(Value::Array(Rc::new(RefCell::new(result))))
-                                    };
+                                    });
                                     Ok(Value::NativeFunction(NativeFunction {
                                         name: "slice".to_string(),
                                         func: slice_fn,
@@ -1161,7 +1161,7 @@ impl Interpreter {
                                 }
                                 "splice" => {
                                     let arr_clone = arr.clone();
-                                    let splice_fn: NativeFn = move |args| {
+                                    let splice_fn: NativeFn = Rc::new(move |args| {
                                         let mut arr_mut = arr_clone.borrow_mut();
                                         if args.is_empty() {
                                             return Ok(Value::Array(Rc::new(RefCell::new(vec![]))));
@@ -1182,7 +1182,7 @@ impl Interpreter {
                                             arr_mut.insert(start + i, item.clone());
                                         }
                                         Ok(Value::Array(Rc::new(RefCell::new(removed))))
-                                    };
+                                    });
                                     Ok(Value::NativeFunction(NativeFunction {
                                         name: "splice".to_string(),
                                         func: splice_fn,
@@ -1198,9 +1198,9 @@ impl Interpreter {
                             "length" => Ok(Value::Number(s.len() as f64)),
                             "toLowerCase" => {
                                 let s_clone = s.clone();
-                                let fn_impl: NativeFn = move |_args| {
+                                let fn_impl: NativeFn = Rc::new(move |_args| {
                                     Ok(Value::String(s_clone.to_lowercase()))
-                                };
+                                });
                                 Ok(Value::NativeFunction(NativeFunction {
                                     name: "toLowerCase".to_string(),
                                     func: fn_impl,
@@ -1208,9 +1208,9 @@ impl Interpreter {
                             }
                             "toUpperCase" => {
                                 let s_clone = s.clone();
-                                let fn_impl: NativeFn = move |_args| {
+                                let fn_impl: NativeFn = Rc::new(move |_args| {
                                     Ok(Value::String(s_clone.to_uppercase()))
-                                };
+                                });
                                 Ok(Value::NativeFunction(NativeFunction {
                                     name: "toUpperCase".to_string(),
                                     func: fn_impl,
@@ -1218,7 +1218,7 @@ impl Interpreter {
                             }
                             "split" => {
                                 let s_clone = s.clone();
-                                let fn_impl: NativeFn = move |args| {
+                                let fn_impl: NativeFn = Rc::new(move |args| {
                                     if args.is_empty() {
                                         return Ok(Value::Array(Rc::new(RefCell::new(vec![Value::String(s_clone.clone())]))));
                                     }
@@ -1229,7 +1229,7 @@ impl Interpreter {
                                         s_clone.split(&separator).map(|s| Value::String(s.to_string())).collect()
                                     };
                                     Ok(Value::Array(Rc::new(RefCell::new(parts))))
-                                };
+                                });
                                 Ok(Value::NativeFunction(NativeFunction {
                                     name: "split".to_string(),
                                     func: fn_impl,
@@ -1237,7 +1237,7 @@ impl Interpreter {
                             }
                             "substring" => {
                                 let s_clone = s.clone();
-                                let fn_impl: NativeFn = move |args| {
+                                let fn_impl: NativeFn = Rc::new(move |args| {
                                     let len = s_clone.len();
                                     let start = if args.is_empty() {
                                         0
@@ -1251,7 +1251,7 @@ impl Interpreter {
                                     };
                                     let (start, end) = if start > end { (end, start) } else { (start, end) };
                                     Ok(Value::String(s_clone.chars().skip(start).take(end - start).collect()))
-                                };
+                                });
                                 Ok(Value::NativeFunction(NativeFunction {
                                     name: "substring".to_string(),
                                     func: fn_impl,
@@ -1259,7 +1259,7 @@ impl Interpreter {
                             }
                             "slice" => {
                                 let s_clone = s.clone();
-                                let fn_impl: NativeFn = move |args| {
+                                let fn_impl: NativeFn = Rc::new(move |args| {
                                     let len = s_clone.len() as i32;
                                     let start = if args.is_empty() {
                                         0
@@ -1275,7 +1275,7 @@ impl Interpreter {
                                     };
                                     let result: String = s_clone.chars().skip(start as usize).take((end - start).max(0) as usize).collect();
                                     Ok(Value::String(result))
-                                };
+                                });
                                 Ok(Value::NativeFunction(NativeFunction {
                                     name: "slice".to_string(),
                                     func: fn_impl,
@@ -1283,7 +1283,7 @@ impl Interpreter {
                             }
                             "indexOf" => {
                                 let s_clone = s.clone();
-                                let fn_impl: NativeFn = move |args| {
+                                let fn_impl: NativeFn = Rc::new(move |args| {
                                     if args.is_empty() {
                                         return Ok(Value::Number(-1.0));
                                     }
@@ -1292,7 +1292,7 @@ impl Interpreter {
                                         Some(idx) => Ok(Value::Number(idx as f64)),
                                         None => Ok(Value::Number(-1.0)),
                                     }
-                                };
+                                });
                                 Ok(Value::NativeFunction(NativeFunction {
                                     name: "indexOf".to_string(),
                                     func: fn_impl,
