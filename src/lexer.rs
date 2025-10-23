@@ -86,6 +86,7 @@ pub enum Token {
     Semicolon,
     Comma,
     Dot,
+    Ellipsis, // ...
     Colon,
     Question,
     Arrow,
@@ -498,7 +499,19 @@ impl Lexer {
             }
             '.' => {
                 self.advance();
-                Token::Dot
+                // Check for ... (ellipsis/spread operator)
+                if self.peek(0) == Some('.') {
+                    self.advance();
+                    if self.peek(0) == Some('.') {
+                        self.advance();
+                        Token::Ellipsis
+                    } else {
+                        // Two dots is an error, but we'll just treat it as Dot for now
+                        Token::Dot
+                    }
+                } else {
+                    Token::Dot
+                }
             }
             ':' => {
                 self.advance();

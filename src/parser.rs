@@ -125,7 +125,7 @@ impl Parser {
         Ok(Stmt::FunctionDecl { name, params, body })
     }
 
-    fn parameter_list(&mut self) -> Result<Vec<String>, String> {
+    fn parameter_list(&mut self) -> Result<Vec<FunctionParam>, String> {
         let mut params = Vec::new();
 
         if self.current() == &Token::RParen {
@@ -133,12 +133,26 @@ impl Parser {
         }
 
         loop {
-            match self.current() {
-                Token::Identifier(name) => {
-                    params.push(name.clone());
-                    self.advance();
+            // Check for rest parameter (...param)
+            if self.current() == &Token::Ellipsis {
+                self.advance();
+                match self.current() {
+                    Token::Identifier(name) => {
+                        params.push(FunctionParam::Rest(name.clone()));
+                        self.advance();
+                        // Rest parameter must be last
+                        break;
+                    }
+                    _ => return Err("Expected parameter name after ...".to_string()),
                 }
-                _ => return Err("Expected parameter name".to_string()),
+            } else {
+                match self.current() {
+                    Token::Identifier(name) => {
+                        params.push(FunctionParam::Normal(name.clone()));
+                        self.advance();
+                    }
+                    _ => return Err("Expected parameter name".to_string()),
+                }
             }
 
             if self.current() == &Token::Comma {
@@ -816,7 +830,7 @@ impl Parser {
                     self.advance();
                     let body = Box::new(self.assignment()?);
                     return Ok(Expr::ArrowFunction {
-                        params: vec![name],
+                        params: vec![FunctionParam::Normal(name)],
                         body,
                     });
                 }
@@ -837,13 +851,13 @@ impl Parser {
                     // Empty parameter list ()
                     is_arrow_params = true;
                 } else if let Token::Identifier(name) = self.current() {
-                    params.push(name.clone());
+                    params.push(FunctionParam::Normal(name.clone()));
                     self.advance();
 
                     while self.current() == &Token::Comma {
                         self.advance();
                         if let Token::Identifier(name) = self.current() {
-                            params.push(name.clone());
+                            params.push(FunctionParam::Normal(name.clone()));
                             self.advance();
                         } else {
                             // Not a valid parameter list, reset
@@ -884,7 +898,14 @@ impl Parser {
                 let mut elements = Vec::new();
 
                 while self.current() != &Token::RBracket && self.current() != &Token::Eof {
-                    elements.push(self.expression()?);
+                    // Check for spread element
+                    if self.current() == &Token::Ellipsis {
+                        self.advance();
+                        let expr = self.expression()?;
+                        elements.push(ArrayElement::Spread(expr));
+                    } else {
+                        elements.push(ArrayElement::Expression(self.expression()?));
+                    }
                     if self.current() == &Token::Comma {
                         self.advance();
                     }
@@ -898,16 +919,23 @@ impl Parser {
                 let mut properties = Vec::new();
 
                 while self.current() != &Token::RBrace && self.current() != &Token::Eof {
-                    let key = match self.current() {
-                        Token::Identifier(name) => name.clone(),
-                        Token::String(s) => s.clone(),
-                        _ => return Err("Expected property key".to_string()),
-                    };
-                    self.advance();
+                    // Check for spread property
+                    if self.current() == &Token::Ellipsis {
+                        self.advance();
+                        let expr = self.expression()?;
+                        properties.push(ObjectProperty::Spread(expr));
+                    } else {
+                        let key = match self.current() {
+                            Token::Identifier(name) => name.clone(),
+                            Token::String(s) => s.clone(),
+                            _ => return Err("Expected property key".to_string()),
+                        };
+                        self.advance();
 
-                    self.expect(Token::Colon)?;
-                    let value = self.expression()?;
-                    properties.push((key, value));
+                        self.expect(Token::Colon)?;
+                        let value = self.expression()?;
+                        properties.push(ObjectProperty::Property { key, value });
+                    }
 
                     if self.current() == &Token::Comma {
                         self.advance();

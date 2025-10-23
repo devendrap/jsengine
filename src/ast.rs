@@ -94,22 +94,25 @@ pub enum Expr {
     },
 
     // Array literal
-    Array(Vec<Expr>),
+    Array(Vec<ArrayElement>),
 
     // Object literal
-    Object(Vec<(String, Expr)>),
+    Object(Vec<ObjectProperty>),
 
     // Function expression
     Function {
-        params: Vec<String>,
+        params: Vec<FunctionParam>,
         body: Vec<Stmt>,
     },
 
     // Arrow function
     ArrowFunction {
-        params: Vec<String>,
+        params: Vec<FunctionParam>,
         body: Box<Expr>, // For now, simplified to expression body
     },
+
+    // Spread expression (...expr) - used in arrays, objects, and function calls
+    Spread(Box<Expr>),
 
     // Conditional (ternary)
     Conditional {
@@ -171,7 +174,7 @@ pub enum Stmt {
     // Function declaration
     FunctionDecl {
         name: String,
-        params: Vec<String>,
+        params: Vec<FunctionParam>,
         body: Vec<Stmt>,
     },
 
@@ -260,6 +263,27 @@ pub enum UpdateOp {
 pub enum LogicalAssignOp {
     And, // &&=
     Or,  // ||=
+}
+
+// Array element - can be a regular expression or spread
+#[derive(Debug, Clone, PartialEq)]
+pub enum ArrayElement {
+    Expression(Expr),
+    Spread(Expr),
+}
+
+// Object property - can be a key-value pair or spread
+#[derive(Debug, Clone, PartialEq)]
+pub enum ObjectProperty {
+    Property { key: String, value: Expr },
+    Spread(Expr),
+}
+
+// Function parameter - can be a regular parameter or rest parameter
+#[derive(Debug, Clone, PartialEq)]
+pub enum FunctionParam {
+    Normal(String),
+    Rest(String), // ...paramName
 }
 
 impl fmt::Display for BinOp {
