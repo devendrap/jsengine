@@ -46,12 +46,27 @@ A cross-platform JavaScript engine implementation written in Rust, serving as a 
 - `parseFloat()` - Parse string to float
 - `isNaN()` - Check if value is NaN
 
+**Object Methods:**
+- `Object.keys()` - Get object keys as array
+- `Object.values()` - Get object values as array
+- `Object.entries()` - Get key-value pairs as arrays
+- `Object.assign()` - Merge objects
+- `Object.create()` - Create new object
+- `hasOwnProperty()` - Check if property exists on object
+
 **Array Methods:**
 - `push()`, `pop()` - Add/remove from end
 - `shift()`, `unshift()` - Add/remove from beginning
 - `slice()`, `splice()` - Extract/modify portions
 - `indexOf()` - Find element index
 - `map()`, `filter()`, `reduce()` - Functional iteration
+- `find()`, `findIndex()` - Find element/index by predicate
+- `some()`, `every()` - Test elements with predicate
+- `forEach()` - Iterate with callback
+- `join()` - Join elements into string
+- `reverse()` - Reverse array in place
+- `concat()` - Concatenate arrays
+- `includes()` - Check if element exists
 - `length` - Array size property
 
 **String Methods:**
@@ -59,6 +74,13 @@ A cross-platform JavaScript engine implementation written in Rust, serving as a 
 - `substring()`, `slice()` - Extract portions
 - `indexOf()` - Find substring position
 - `toLowerCase()`, `toUpperCase()` - Case conversion
+- `charAt()`, `charCodeAt()` - Get character/code at index
+- `trim()` - Remove whitespace from ends
+- `replace()` - Replace first occurrence
+- `startsWith()`, `endsWith()` - Check string boundaries
+- `includes()` - Check if substring exists
+- `repeat()` - Repeat string n times
+- `padStart()`, `padEnd()` - Pad string to length
 - `length` - String size property
 
 **Math Object:**
@@ -67,6 +89,10 @@ A cross-platform JavaScript engine implementation written in Rust, serving as a 
 - `Math.min()`, `Math.max()` - Min/max of numbers
 - `Math.random()` - Random number generation
 - `Math.PI`, `Math.E` - Mathematical constants
+
+**JSON Support:**
+- `JSON.stringify()` - Convert value to JSON string
+- `JSON.parse()` - Parse JSON string to value
 
 ## Architecture
 
@@ -135,6 +161,7 @@ The `examples/` directory contains sample programs:
 - **operators-new.js** - Compound assignments, increment/decrement operators
 - **quick-wins.js** - instanceof, in, bitwise/logical assignments, for...in loop
 - **builtin-methods.js** - Array methods, String methods, Math object, compound member assignments
+- **enhanced-features.js** - Object methods, advanced Array/String methods, JSON support
 - **comprehensive-demo.js** - Complete feature showcase
 
 ### Quick Example
@@ -209,23 +236,27 @@ As a tree-walking interpreter, it's significantly slower than JIT-compiled engin
 
 Current limitations (by design for POC):
 - No async/await or Promises
-- Partial standard library (core Array, String, and Math methods implemented; no Object methods, Date, etc.)
+- Partial standard library (comprehensive Object, Array, String, Math, and JSON support; no Date, RegExp, Set, Map, etc.)
 - Limited prototype chain support (basic constructor tracking only)
 - No regular expressions
 - No destructuring assignment
 - No spread operator
-- No modules/imports
+- No modules/imports (no import/export)
 - No eval() or dynamic code generation
 - No WebAssembly support (planned for future)
+- No ES6 classes (class keyword)
 
 ## Future Enhancements
 
 Potential areas for expansion:
+- **ES6 Classes** - Implement class, extends, super keywords
+- **Spread/Rest operators** - Array/object spreading and rest parameters
+- **Destructuring** - Array and object destructuring assignment
 - **Bytecode compiler** - Replace tree-walking with bytecode VM
 - **JIT compilation** - Add basic JIT tier for hot code paths
 - **Garbage collection** - Replace reference counting with proper GC
 - **WebAssembly** - Add WASM runtime and compilation
-- **Standard library** - Implement remaining built-in objects (Date, JSON, Object methods, etc.)
+- **Standard library** - Implement remaining built-in objects (Date, RegExp, Set, Map, etc.)
 - **Source maps** - Better error reporting with line/column numbers
 - **Debugger** - Step-through debugging capabilities
 
