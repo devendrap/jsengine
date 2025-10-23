@@ -43,11 +43,11 @@ impl Interpreter {
 
     fn init_globals(&mut self) {
         // console.log
-        let console_log: NativeFn = |args| {
+        let console_log: NativeFn = Rc::new(|args| {
             let output: Vec<String> = args.iter().map(|v| v.to_string()).collect();
             println!("{}", output.join(" "));
             Ok(Value::Undefined)
-        };
+        });
 
         let console = Rc::new(RefCell::new(HashMap::new()));
         console.borrow_mut().insert(
@@ -61,7 +61,7 @@ impl Interpreter {
         self.set_variable("console", Value::Object(console));
 
         // Global functions
-        let parse_int: NativeFn = |args| {
+        let parse_int: NativeFn = Rc::new(|args| {
             if args.is_empty() {
                 return Ok(Value::Number(f64::NAN));
             }
@@ -70,9 +70,9 @@ impl Interpreter {
                 Ok(n) => Ok(Value::Number(n.trunc())),
                 Err(_) => Ok(Value::Number(f64::NAN)),
             }
-        };
+        });
 
-        let parse_float: NativeFn = |args| {
+        let parse_float: NativeFn = Rc::new(|args| {
             if args.is_empty() {
                 return Ok(Value::Number(f64::NAN));
             }
@@ -80,9 +80,9 @@ impl Interpreter {
                 Ok(n) => Ok(Value::Number(n)),
                 Err(_) => Ok(Value::Number(f64::NAN)),
             }
-        };
+        });
 
-        let is_nan: NativeFn = |args| {
+        let is_nan: NativeFn = Rc::new(|args| {
             if args.is_empty() {
                 return Ok(Value::Boolean(true));
             }
@@ -90,7 +90,7 @@ impl Interpreter {
                 Ok(n) => Ok(Value::Boolean(n.is_nan())),
                 Err(_) => Ok(Value::Boolean(true)),
             }
-        };
+        });
 
         self.set_variable("parseInt", Value::NativeFunction(NativeFunction {
             name: "parseInt".to_string(),
@@ -106,6 +106,171 @@ impl Interpreter {
             name: "isNaN".to_string(),
             func: is_nan,
         }));
+
+        // Math object
+        let math_obj = Rc::new(RefCell::new(HashMap::new()));
+
+        // Math.floor
+        let floor_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Ok(Value::Number(f64::NAN));
+            }
+            match args[0].to_number() {
+                Ok(n) => Ok(Value::Number(n.floor())),
+                Err(_) => Ok(Value::Number(f64::NAN)),
+            }
+        });
+        math_obj.borrow_mut().insert("floor".to_string(), Value::NativeFunction(NativeFunction {
+            name: "floor".to_string(),
+            func: floor_fn,
+        }));
+
+        // Math.ceil
+        let ceil_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Ok(Value::Number(f64::NAN));
+            }
+            match args[0].to_number() {
+                Ok(n) => Ok(Value::Number(n.ceil())),
+                Err(_) => Ok(Value::Number(f64::NAN)),
+            }
+        });
+        math_obj.borrow_mut().insert("ceil".to_string(), Value::NativeFunction(NativeFunction {
+            name: "ceil".to_string(),
+            func: ceil_fn,
+        }));
+
+        // Math.round
+        let round_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Ok(Value::Number(f64::NAN));
+            }
+            match args[0].to_number() {
+                Ok(n) => Ok(Value::Number(n.round())),
+                Err(_) => Ok(Value::Number(f64::NAN)),
+            }
+        });
+        math_obj.borrow_mut().insert("round".to_string(), Value::NativeFunction(NativeFunction {
+            name: "round".to_string(),
+            func: round_fn,
+        }));
+
+        // Math.abs
+        let abs_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Ok(Value::Number(f64::NAN));
+            }
+            match args[0].to_number() {
+                Ok(n) => Ok(Value::Number(n.abs())),
+                Err(_) => Ok(Value::Number(f64::NAN)),
+            }
+        });
+        math_obj.borrow_mut().insert("abs".to_string(), Value::NativeFunction(NativeFunction {
+            name: "abs".to_string(),
+            func: abs_fn,
+        }));
+
+        // Math.sqrt
+        let sqrt_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Ok(Value::Number(f64::NAN));
+            }
+            match args[0].to_number() {
+                Ok(n) => Ok(Value::Number(n.sqrt())),
+                Err(_) => Ok(Value::Number(f64::NAN)),
+            }
+        });
+        math_obj.borrow_mut().insert("sqrt".to_string(), Value::NativeFunction(NativeFunction {
+            name: "sqrt".to_string(),
+            func: sqrt_fn,
+        }));
+
+        // Math.pow
+        let pow_fn: NativeFn = Rc::new(|args| {
+            if args.len() < 2 {
+                return Ok(Value::Number(f64::NAN));
+            }
+            match (args[0].to_number(), args[1].to_number()) {
+                (Ok(base), Ok(exp)) => Ok(Value::Number(base.powf(exp))),
+                _ => Ok(Value::Number(f64::NAN)),
+            }
+        });
+        math_obj.borrow_mut().insert("pow".to_string(), Value::NativeFunction(NativeFunction {
+            name: "pow".to_string(),
+            func: pow_fn,
+        }));
+
+        // Math.min
+        let min_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Ok(Value::Number(f64::INFINITY));
+            }
+            let mut min = f64::INFINITY;
+            for arg in args {
+                match arg.to_number() {
+                    Ok(n) => {
+                        if n.is_nan() {
+                            return Ok(Value::Number(f64::NAN));
+                        }
+                        min = min.min(n);
+                    }
+                    Err(_) => return Ok(Value::Number(f64::NAN)),
+                }
+            }
+            Ok(Value::Number(min))
+        });
+        math_obj.borrow_mut().insert("min".to_string(), Value::NativeFunction(NativeFunction {
+            name: "min".to_string(),
+            func: min_fn,
+        }));
+
+        // Math.max
+        let max_fn: NativeFn = Rc::new(|args| {
+            if args.is_empty() {
+                return Ok(Value::Number(f64::NEG_INFINITY));
+            }
+            let mut max = f64::NEG_INFINITY;
+            for arg in args {
+                match arg.to_number() {
+                    Ok(n) => {
+                        if n.is_nan() {
+                            return Ok(Value::Number(f64::NAN));
+                        }
+                        max = max.max(n);
+                    }
+                    Err(_) => return Ok(Value::Number(f64::NAN)),
+                }
+            }
+            Ok(Value::Number(max))
+        });
+        math_obj.borrow_mut().insert("max".to_string(), Value::NativeFunction(NativeFunction {
+            name: "max".to_string(),
+            func: max_fn,
+        }));
+
+        // Math.random
+        let random_fn: NativeFn = Rc::new(|_args| {
+            use std::collections::hash_map::RandomState;
+            use std::hash::{BuildHasher, Hasher};
+            let s = RandomState::new();
+            let mut hasher = s.build_hasher();
+            hasher.write_u64(std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos() as u64);
+            let hash = hasher.finish();
+            Ok(Value::Number((hash as f64) / (u64::MAX as f64)))
+        });
+        math_obj.borrow_mut().insert("random".to_string(), Value::NativeFunction(NativeFunction {
+            name: "random".to_string(),
+            func: random_fn,
+        }));
+
+        // Math constants
+        math_obj.borrow_mut().insert("PI".to_string(), Value::Number(std::f64::consts::PI));
+        math_obj.borrow_mut().insert("E".to_string(), Value::Number(std::f64::consts::E));
+
+        self.set_variable("Math", Value::Object(math_obj));
     }
 
     fn current_scope(&self) -> Rc<RefCell<HashMap<String, Value>>> {
@@ -614,8 +779,208 @@ impl Interpreter {
                 }
             }
 
+            Expr::CompoundMemberAssignment { object, property, computed, op, value } => {
+                let obj = self.eval_expression(object)?;
+                let prop_name = if *computed {
+                    self.eval_expression(property)?.to_string()
+                } else {
+                    match property.as_ref() {
+                        Expr::String(s) => s.clone(),
+                        _ => return Err("Invalid property access".to_string()),
+                    }
+                };
+
+                // Get current value
+                let current = match &obj {
+                    Value::Object(map) => {
+                        map.borrow().get(&prop_name).cloned().unwrap_or(Value::Undefined)
+                    }
+                    Value::Array(arr) => {
+                        if let Ok(idx) = prop_name.parse::<usize>() {
+                            arr.borrow().get(idx).cloned().unwrap_or(Value::Undefined)
+                        } else {
+                            return Err(format!("Cannot get property '{}' on array", prop_name));
+                        }
+                    }
+                    _ => return Err("Cannot access property on non-object".to_string()),
+                };
+
+                // Evaluate new value
+                let rhs = self.eval_expression(value)?;
+                let new_val = self.eval_binary_op(&current, *op, &rhs)?;
+
+                // Set the property
+                match obj {
+                    Value::Object(map) => {
+                        map.borrow_mut().insert(prop_name, new_val.clone());
+                        Ok(new_val)
+                    }
+                    Value::Array(arr) => {
+                        if let Ok(idx) = prop_name.parse::<usize>() {
+                            let mut arr_mut = arr.borrow_mut();
+                            if idx >= arr_mut.len() {
+                                arr_mut.resize(idx + 1, Value::Undefined);
+                            }
+                            arr_mut[idx] = new_val.clone();
+                            Ok(new_val)
+                        } else {
+                            Err(format!("Cannot set property '{}' on array", prop_name))
+                        }
+                    }
+                    _ => Err("Cannot set property on non-object".to_string()),
+                }
+            }
+
+            Expr::LogicalMemberAssignment { object, property, computed, op, value } => {
+                let obj = self.eval_expression(object)?;
+                let prop_name = if *computed {
+                    self.eval_expression(property)?.to_string()
+                } else {
+                    match property.as_ref() {
+                        Expr::String(s) => s.clone(),
+                        _ => return Err("Invalid property access".to_string()),
+                    }
+                };
+
+                // Get current value
+                let current = match &obj {
+                    Value::Object(map) => {
+                        map.borrow().get(&prop_name).cloned().unwrap_or(Value::Undefined)
+                    }
+                    Value::Array(arr) => {
+                        if let Ok(idx) = prop_name.parse::<usize>() {
+                            arr.borrow().get(idx).cloned().unwrap_or(Value::Undefined)
+                        } else {
+                            return Err(format!("Cannot get property '{}' on array", prop_name));
+                        }
+                    }
+                    _ => return Err("Cannot access property on non-object".to_string()),
+                };
+
+                // Short-circuit evaluation
+                let new_val = match op {
+                    LogicalAssignOp::And => {
+                        if !current.to_boolean() {
+                            current
+                        } else {
+                            self.eval_expression(value)?
+                        }
+                    }
+                    LogicalAssignOp::Or => {
+                        if current.to_boolean() {
+                            current
+                        } else {
+                            self.eval_expression(value)?
+                        }
+                    }
+                };
+
+                // Set the property
+                match obj {
+                    Value::Object(map) => {
+                        map.borrow_mut().insert(prop_name, new_val.clone());
+                        Ok(new_val)
+                    }
+                    Value::Array(arr) => {
+                        if let Ok(idx) = prop_name.parse::<usize>() {
+                            let mut arr_mut = arr.borrow_mut();
+                            if idx >= arr_mut.len() {
+                                arr_mut.resize(idx + 1, Value::Undefined);
+                            }
+                            arr_mut[idx] = new_val.clone();
+                            Ok(new_val)
+                        } else {
+                            Err(format!("Cannot set property '{}' on array", prop_name))
+                        }
+                    }
+                    _ => Err("Cannot set property on non-object".to_string()),
+                }
+            }
+
             Expr::Call { callee, args } => {
-                // Evaluate the callee
+                // Special handling for array iteration methods (map, filter, reduce)
+                if let Expr::Member { object, property, computed } = callee.as_ref() {
+                    let obj = self.eval_expression(object)?;
+                    let prop_name = if *computed {
+                        self.eval_expression(property)?.to_string()
+                    } else {
+                        match property.as_ref() {
+                            Expr::String(s) => s.clone(),
+                            _ => String::new(),
+                        }
+                    };
+
+                    if let Value::Array(arr) = &obj {
+                        match prop_name.as_str() {
+                            "map" => {
+                                if args.is_empty() {
+                                    return Err("map requires a callback function".to_string());
+                                }
+                                let callback = self.eval_expression(&args[0])?;
+                                let arr_borrow = arr.borrow();
+                                let mut result = vec![];
+                                for (i, val) in arr_borrow.iter().enumerate() {
+                                    let call_args = vec![val.clone(), Value::Number(i as f64), Value::Array(arr.clone())];
+                                    let mapped = match &callback {
+                                        Value::Function(f) => self.call_function(f, &call_args, Value::Undefined)?,
+                                        Value::NativeFunction(nf) => (nf.func)(&call_args)?,
+                                        _ => return Err("map callback must be a function".to_string()),
+                                    };
+                                    result.push(mapped);
+                                }
+                                return Ok(Value::Array(Rc::new(RefCell::new(result))));
+                            }
+                            "filter" => {
+                                if args.is_empty() {
+                                    return Err("filter requires a callback function".to_string());
+                                }
+                                let callback = self.eval_expression(&args[0])?;
+                                let arr_borrow = arr.borrow();
+                                let mut result = vec![];
+                                for (i, val) in arr_borrow.iter().enumerate() {
+                                    let call_args = vec![val.clone(), Value::Number(i as f64), Value::Array(arr.clone())];
+                                    let keep = match &callback {
+                                        Value::Function(f) => self.call_function(f, &call_args, Value::Undefined)?,
+                                        Value::NativeFunction(nf) => (nf.func)(&call_args)?,
+                                        _ => return Err("filter callback must be a function".to_string()),
+                                    };
+                                    if keep.to_boolean() {
+                                        result.push(val.clone());
+                                    }
+                                }
+                                return Ok(Value::Array(Rc::new(RefCell::new(result))));
+                            }
+                            "reduce" => {
+                                if args.is_empty() {
+                                    return Err("reduce requires a callback function".to_string());
+                                }
+                                let callback = self.eval_expression(&args[0])?;
+                                let arr_borrow = arr.borrow();
+                                if arr_borrow.is_empty() && args.len() < 2 {
+                                    return Err("reduce of empty array with no initial value".to_string());
+                                }
+                                let mut accumulator = if args.len() > 1 {
+                                    self.eval_expression(&args[1])?
+                                } else {
+                                    arr_borrow[0].clone()
+                                };
+                                let start_idx = if args.len() > 1 { 0 } else { 1 };
+                                for (i, val) in arr_borrow.iter().enumerate().skip(start_idx) {
+                                    let call_args = vec![accumulator, val.clone(), Value::Number(i as f64), Value::Array(arr.clone())];
+                                    accumulator = match &callback {
+                                        Value::Function(f) => self.call_function(f, &call_args, Value::Undefined)?,
+                                        Value::NativeFunction(nf) => (nf.func)(&call_args)?,
+                                        _ => return Err("reduce callback must be a function".to_string()),
+                                    };
+                                }
+                                return Ok(accumulator);
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+
+                // Regular function call
                 let func = self.eval_expression(callee)?;
                 let arg_values: Result<Vec<Value>, String> =
                     args.iter().map(|arg| self.eval_expression(arg)).collect();
@@ -695,7 +1060,245 @@ impl Interpreter {
                         } else if let Ok(idx) = prop_name.parse::<usize>() {
                             Ok(arr.borrow().get(idx).cloned().unwrap_or(Value::Undefined))
                         } else {
-                            Ok(Value::Undefined)
+                            // Array methods
+                            match prop_name.as_str() {
+                                "push" => {
+                                    let arr_clone = arr.clone();
+                                    let push_fn: NativeFn = Rc::new(move |args| {
+                                        for arg in args {
+                                            arr_clone.borrow_mut().push(arg.clone());
+                                        }
+                                        Ok(Value::Number(arr_clone.borrow().len() as f64))
+                                    });
+                                    Ok(Value::NativeFunction(NativeFunction {
+                                        name: "push".to_string(),
+                                        func: push_fn,
+                                    }))
+                                }
+                                "pop" => {
+                                    let arr_clone = arr.clone();
+                                    let pop_fn: NativeFn = Rc::new(move |_args| {
+                                        Ok(arr_clone.borrow_mut().pop().unwrap_or(Value::Undefined))
+                                    });
+                                    Ok(Value::NativeFunction(NativeFunction {
+                                        name: "pop".to_string(),
+                                        func: pop_fn,
+                                    }))
+                                }
+                                "shift" => {
+                                    let arr_clone = arr.clone();
+                                    let shift_fn: NativeFn = Rc::new(move |_args| {
+                                        let mut arr_mut = arr_clone.borrow_mut();
+                                        if arr_mut.is_empty() {
+                                            Ok(Value::Undefined)
+                                        } else {
+                                            Ok(arr_mut.remove(0))
+                                        }
+                                    });
+                                    Ok(Value::NativeFunction(NativeFunction {
+                                        name: "shift".to_string(),
+                                        func: shift_fn,
+                                    }))
+                                }
+                                "unshift" => {
+                                    let arr_clone = arr.clone();
+                                    let unshift_fn: NativeFn = Rc::new(move |args| {
+                                        let mut arr_mut = arr_clone.borrow_mut();
+                                        for (i, arg) in args.iter().enumerate() {
+                                            arr_mut.insert(i, arg.clone());
+                                        }
+                                        Ok(Value::Number(arr_mut.len() as f64))
+                                    });
+                                    Ok(Value::NativeFunction(NativeFunction {
+                                        name: "unshift".to_string(),
+                                        func: unshift_fn,
+                                    }))
+                                }
+                                "indexOf" => {
+                                    let arr_clone = arr.clone();
+                                    let indexof_fn: NativeFn = Rc::new(move |args| {
+                                        if args.is_empty() {
+                                            return Ok(Value::Number(-1.0));
+                                        }
+                                        let search = &args[0];
+                                        let arr_borrow = arr_clone.borrow();
+                                        for (i, val) in arr_borrow.iter().enumerate() {
+                                            if val.strict_equals(search) {
+                                                return Ok(Value::Number(i as f64));
+                                            }
+                                        }
+                                        Ok(Value::Number(-1.0))
+                                    });
+                                    Ok(Value::NativeFunction(NativeFunction {
+                                        name: "indexOf".to_string(),
+                                        func: indexof_fn,
+                                    }))
+                                }
+                                "slice" => {
+                                    let arr_clone = arr.clone();
+                                    let slice_fn: NativeFn = Rc::new(move |args| {
+                                        let arr_borrow = arr_clone.borrow();
+                                        let len = arr_borrow.len() as i32;
+                                        let start = if args.is_empty() {
+                                            0
+                                        } else {
+                                            let s = args[0].to_number().unwrap_or(0.0) as i32;
+                                            if s < 0 { (len + s).max(0) } else { s.min(len) }
+                                        };
+                                        let end = if args.len() < 2 {
+                                            len
+                                        } else {
+                                            let e = args[1].to_number().unwrap_or(len as f64) as i32;
+                                            if e < 0 { (len + e).max(0) } else { e.min(len) }
+                                        };
+                                        let result: Vec<Value> = arr_borrow[start as usize..end.max(start) as usize].to_vec();
+                                        Ok(Value::Array(Rc::new(RefCell::new(result))))
+                                    });
+                                    Ok(Value::NativeFunction(NativeFunction {
+                                        name: "slice".to_string(),
+                                        func: slice_fn,
+                                    }))
+                                }
+                                "splice" => {
+                                    let arr_clone = arr.clone();
+                                    let splice_fn: NativeFn = Rc::new(move |args| {
+                                        let mut arr_mut = arr_clone.borrow_mut();
+                                        if args.is_empty() {
+                                            return Ok(Value::Array(Rc::new(RefCell::new(vec![]))));
+                                        }
+                                        let start = args[0].to_number().unwrap_or(0.0) as usize;
+                                        let delete_count = if args.len() < 2 {
+                                            arr_mut.len().saturating_sub(start)
+                                        } else {
+                                            args[1].to_number().unwrap_or(0.0) as usize
+                                        };
+                                        let mut removed = vec![];
+                                        for _ in 0..delete_count.min(arr_mut.len().saturating_sub(start)) {
+                                            if start < arr_mut.len() {
+                                                removed.push(arr_mut.remove(start));
+                                            }
+                                        }
+                                        for (i, item) in args[2..].iter().enumerate() {
+                                            arr_mut.insert(start + i, item.clone());
+                                        }
+                                        Ok(Value::Array(Rc::new(RefCell::new(removed))))
+                                    });
+                                    Ok(Value::NativeFunction(NativeFunction {
+                                        name: "splice".to_string(),
+                                        func: splice_fn,
+                                    }))
+                                }
+                                _ => Ok(Value::Undefined),
+                            }
+                        }
+                    }
+                    Value::String(s) => {
+                        // String methods
+                        match prop_name.as_str() {
+                            "length" => Ok(Value::Number(s.len() as f64)),
+                            "toLowerCase" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |_args| {
+                                    Ok(Value::String(s_clone.to_lowercase()))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "toLowerCase".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "toUpperCase" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |_args| {
+                                    Ok(Value::String(s_clone.to_uppercase()))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "toUpperCase".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "split" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |args| {
+                                    if args.is_empty() {
+                                        return Ok(Value::Array(Rc::new(RefCell::new(vec![Value::String(s_clone.clone())]))));
+                                    }
+                                    let separator = args[0].to_string();
+                                    let parts: Vec<Value> = if separator.is_empty() {
+                                        s_clone.chars().map(|c| Value::String(c.to_string())).collect()
+                                    } else {
+                                        s_clone.split(&separator).map(|s| Value::String(s.to_string())).collect()
+                                    };
+                                    Ok(Value::Array(Rc::new(RefCell::new(parts))))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "split".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "substring" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |args| {
+                                    let len = s_clone.len();
+                                    let start = if args.is_empty() {
+                                        0
+                                    } else {
+                                        (args[0].to_number().unwrap_or(0.0) as usize).min(len)
+                                    };
+                                    let end = if args.len() < 2 {
+                                        len
+                                    } else {
+                                        (args[1].to_number().unwrap_or(len as f64) as usize).min(len)
+                                    };
+                                    let (start, end) = if start > end { (end, start) } else { (start, end) };
+                                    Ok(Value::String(s_clone.chars().skip(start).take(end - start).collect()))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "substring".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "slice" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |args| {
+                                    let len = s_clone.len() as i32;
+                                    let start = if args.is_empty() {
+                                        0
+                                    } else {
+                                        let s = args[0].to_number().unwrap_or(0.0) as i32;
+                                        if s < 0 { (len + s).max(0) } else { s.min(len) }
+                                    };
+                                    let end = if args.len() < 2 {
+                                        len
+                                    } else {
+                                        let e = args[1].to_number().unwrap_or(len as f64) as i32;
+                                        if e < 0 { (len + e).max(0) } else { e.min(len) }
+                                    };
+                                    let result: String = s_clone.chars().skip(start as usize).take((end - start).max(0) as usize).collect();
+                                    Ok(Value::String(result))
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "slice".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            "indexOf" => {
+                                let s_clone = s.clone();
+                                let fn_impl: NativeFn = Rc::new(move |args| {
+                                    if args.is_empty() {
+                                        return Ok(Value::Number(-1.0));
+                                    }
+                                    let search = args[0].to_string();
+                                    match s_clone.find(&search) {
+                                        Some(idx) => Ok(Value::Number(idx as f64)),
+                                        None => Ok(Value::Number(-1.0)),
+                                    }
+                                });
+                                Ok(Value::NativeFunction(NativeFunction {
+                                    name: "indexOf".to_string(),
+                                    func: fn_impl,
+                                }))
+                            }
+                            _ => Ok(Value::Undefined),
                         }
                     }
                     _ => Ok(Value::Undefined),
