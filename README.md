@@ -46,6 +46,28 @@ A cross-platform JavaScript engine implementation written in Rust, serving as a 
 - `parseFloat()` - Parse string to float
 - `isNaN()` - Check if value is NaN
 
+**Array Methods:**
+- `push()`, `pop()` - Add/remove from end
+- `shift()`, `unshift()` - Add/remove from beginning
+- `slice()`, `splice()` - Extract/modify portions
+- `indexOf()` - Find element index
+- `map()`, `filter()`, `reduce()` - Functional iteration
+- `length` - Array size property
+
+**String Methods:**
+- `split()` - Split into array
+- `substring()`, `slice()` - Extract portions
+- `indexOf()` - Find substring position
+- `toLowerCase()`, `toUpperCase()` - Case conversion
+- `length` - String size property
+
+**Math Object:**
+- `Math.floor()`, `Math.ceil()`, `Math.round()` - Rounding functions
+- `Math.abs()`, `Math.sqrt()`, `Math.pow()` - Mathematical operations
+- `Math.min()`, `Math.max()` - Min/max of numbers
+- `Math.random()` - Random number generation
+- `Math.PI`, `Math.E` - Mathematical constants
+
 ## Architecture
 
 The engine consists of five main components:
@@ -112,6 +134,7 @@ The `examples/` directory contains sample programs:
 - **new-features.js** - Property assignment, throw/try/catch, this, new operator
 - **operators-new.js** - Compound assignments, increment/decrement operators
 - **quick-wins.js** - instanceof, in, bitwise/logical assignments, for...in loop
+- **builtin-methods.js** - Array methods, String methods, Math object, compound member assignments
 - **comprehensive-demo.js** - Complete feature showcase
 
 ### Quick Example
@@ -186,7 +209,7 @@ As a tree-walking interpreter, it's significantly slower than JIT-compiled engin
 
 Current limitations (by design for POC):
 - No async/await or Promises
-- No standard library beyond basic built-ins (no Array/String/Object methods)
+- Partial standard library (core Array, String, and Math methods implemented; no Object methods, Date, etc.)
 - Limited prototype chain support (basic constructor tracking only)
 - No regular expressions
 - No destructuring assignment
@@ -194,7 +217,6 @@ Current limitations (by design for POC):
 - No modules/imports
 - No eval() or dynamic code generation
 - No WebAssembly support (planned for future)
-- Compound/logical assignment on member expressions not yet supported (`obj.x += 5`)
 
 ## Future Enhancements
 
@@ -203,7 +225,7 @@ Potential areas for expansion:
 - **JIT compilation** - Add basic JIT tier for hot code paths
 - **Garbage collection** - Replace reference counting with proper GC
 - **WebAssembly** - Add WASM runtime and compilation
-- **Standard library** - Implement more built-in objects (Math, Array methods, etc.)
+- **Standard library** - Implement remaining built-in objects (Date, JSON, Object methods, etc.)
 - **Source maps** - Better error reporting with line/column numbers
 - **Debugger** - Step-through debugging capabilities
 

@@ -382,16 +382,27 @@ impl Parser {
                     self.advance();
                     let value = Box::new(self.assignment()?);
 
-                    // For now, only support simple assignment on members
-                    if !matches!(op, AssignmentType::Regular) {
-                        return Err("Compound/logical assignment on member expressions not yet supported".to_string());
-                    }
-
-                    return Ok(Expr::MemberAssignment {
-                        object,
-                        property,
-                        computed,
-                        value,
+                    return Ok(match op {
+                        AssignmentType::Regular => Expr::MemberAssignment {
+                            object,
+                            property,
+                            computed,
+                            value,
+                        },
+                        AssignmentType::Compound(bin_op) => Expr::CompoundMemberAssignment {
+                            object,
+                            property,
+                            computed,
+                            op: bin_op,
+                            value,
+                        },
+                        AssignmentType::Logical(logical_op) => Expr::LogicalMemberAssignment {
+                            object,
+                            property,
+                            computed,
+                            op: logical_op,
+                            value,
+                        },
                     });
                 }
                 _ => {}

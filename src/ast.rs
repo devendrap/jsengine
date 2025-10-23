@@ -55,6 +55,24 @@ pub enum Expr {
         value: Box<Expr>,
     },
 
+    // Compound member assignment (obj.x += 5)
+    CompoundMemberAssignment {
+        object: Box<Expr>,
+        property: Box<Expr>,
+        computed: bool,
+        op: BinOp,
+        value: Box<Expr>,
+    },
+
+    // Logical member assignment (obj.x &&= y)
+    LogicalMemberAssignment {
+        object: Box<Expr>,
+        property: Box<Expr>,
+        computed: bool,
+        op: LogicalAssignOp,
+        value: Box<Expr>,
+    },
+
     // Update expression (++x, x++, --x, x--)
     Update {
         expr: Box<Expr>,
